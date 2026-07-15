@@ -1,0 +1,63 @@
+rules_version = '2';
+// AVH-01 Kernel Security Rules
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Default Deny catch-all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- Reusable Primitives ---
+    function isSignedIn() { return request.auth != null; }
+    function isVerified() { return isSignedIn() && request.auth.token.email_verified == true; }
+    function isOwner(userId) { return isSignedIn() && request.auth.uid == userId; }
+    function isValidId(id) { return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); }
+    function incoming() { return request.resource.data; }
+    function existing() { return resource.data; }
+
+    // --- User Profiles ---
+    match /users/{userId} {
+      allow get: if isOwner(userId);
+      allow create: if isOwner(userId) && isValidUserProfile(incoming());
+      allow update: if isOwner(userId) && isValidUserProfile(incoming()) 
+        && incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'photoURL']);
+      
+      function isValidUserProfile(data) {
+        return data.keys().hasAll(['uid', 'email'])
+          && data.uid == request.auth.uid
+          && data.email is string && data.email.size() <= 256
+          && (data.get('displayName', '') is string && data.get('displayName', '').size() <= 128)
+          && (data.get('photoURL', '') is string && data.get('photoURL', '').size() <= 512);
+      }
+    }
+
+    // --- Relays (Neural Bridge) ---
+    match /relays/{relayId} {
+      allow get: if isValidId(relayId); // Public read by ID for external Gemini agents
+      allow list: if false; // No blanket listing of active relays
+      
+      allow create: if isValidId(relayId) && isValidRelayState(incoming())
+        && (incoming().get('ownerId', null) == null || incoming().ownerId == request.auth.uid);
+      
+      allow update: if isValidId(relayId) && isValidRelayState(incoming())
+        && (
+          // Allow update if it's the owner
+          (existing().get('ownerId', null) != null && existing().ownerId == request.auth.uid) ||
+          // Or if it was created anonymously (fallback for current npoint logic)
+          (existing().get('ownerId', null) == null)
+        );
+      
+      function isValidRelayState(data) {
+        return data.keys().hasAll(['logs', 'stats', 'fs', 'terminalOutput', 'timestamp'])
+          && data.logs is list && data.logs.size() <= 100
+          && data.stats is map
+          && data.stats.cpu is number && data.stats.cpu >= 0 && data.stats.cpu <= 100
+          && data.stats.memory is number && data.stats.memory >= 0 && data.stats.memory <= 100
+          && data.fs is map
+          && data.terminalOutput is string && data.terminalOutput.size() <= 20000
+          && data.timestamp is string && data.timestamp.size() <= 64;
+      }
+    }
+  }
+}

@@ -1,0 +1,56 @@
+{
+  "entities": {
+    "RelayState": {
+      "title": "Relay State",
+      "description": "The current state of the AVH-01 Kernel relayed for external access.",
+      "type": "object",
+      "properties": {
+        "logs": {
+          "type": "array",
+          "description": "List of recent log entries."
+        },
+        "stats": {
+          "type": "object",
+          "description": "System telemetry stats."
+        },
+        "fs": {
+          "type": "object",
+          "description": "File system state."
+        },
+        "terminalOutput": {
+          "type": "string",
+          "description": "Last terminal output."
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Last sync timestamp."
+        }
+      },
+      "required": ["logs", "stats", "fs", "terminalOutput", "timestamp"]
+    },
+    "UserProfile": {
+      "title": "User Profile",
+      "description": "The profile of the kernel operator.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "displayName": { "type": "string" },
+        "email": { "type": "string" },
+        "photoURL": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "email"]
+    }
+  },
+  "firestore": {
+    "/relays/{relayId}": {
+      "schema": "RelayState",
+      "description": "Public relays for kernel state sharing."
+    },
+    "/users/{userId}": {
+      "schema": "UserProfile",
+      "description": "User profile data."
+    }
+  }
+}

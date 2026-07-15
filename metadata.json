@@ -1,0 +1,11 @@
+{
+  "name": "AVH-01 Kernel Explorer",
+  "description": "A logic-driven, Turing-complete execution environment and hypervisor explorer powered by the Gemini API, featuring a persistent neural bridge and real-time telemetry.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
